@@ -1,0 +1,36 @@
+POST http://localhost:8000/api.php: {
+  "Network": {
+    "addresses": {
+      "local": {
+        "address": "::1",
+        "family": "IPv6",
+        "port": 63545
+      },
+      "remote": {
+        "address": "::1",
+        "family": "IPv6",
+        "port": 8000
+      }
+    }
+  },
+  "Request Headers": {
+    "content-type": "application/json",
+    "user-agent": "PostmanRuntime/7.44.1",
+    "accept": "*/*",
+    "cache-control": "no-cache",
+    "postman-token": "c18dc124-e5e2-4ef7-b91e-312d29c9cb89",
+    "host": "localhost:8000",
+    "accept-encoding": "gzip, deflate, br",
+    "connection": "keep-alive",
+    "content-length": "264"
+  },
+  "Request Body": " {\n    \"device_token\": \"cA2bWJWGRvi_GrOJMpCli9:APA91bEZ36feN8nmEdwNZYkfp1IO796zRnRxigc2zVp4UijjsRN-lFxrmnJG1MHRw-vdR4RPj7S81FG_3v2HSoUMTLtE4_23X8jWIw6aiQTxGPLGyJbweHQ\",\n    \"title\": \"Hello from Postman!\",\n    \"body\": \"This is a notification sent from Postman.\"\n}\n\n",
+  "Response Headers": {
+    "host": "localhost:8000",
+    "date": "Wed, 16 Jul 2025 07:24:53 GMT",
+    "connection": "close",
+    "x-powered-by": "PHP/8.4.10",
+    "content-type": "application/json"
+  },
+  "Response Body": "{\"success\":\"Notification sent successfully\"}"
+}
