@@ -4,7 +4,7 @@ import tempfile
 import datetime
 from docx2pdf import convert
 
-import re
+
 
 # App title and setup
 st.set_page_config(page_title="FSD Generator", layout="centered")
@@ -121,12 +121,12 @@ if st.button("🚀 Generate FSD"):
         "scope": scope,
         "api_requirements": st.session_state.api_requirements,
         "api_specs": st.session_state.api_specs,
-        "api_depedencies": st.session_state.api_dependencies
+        "api_dependencies": st.session_state.api_dependencies
     }
 
     doc.render(context)
 
-    print(context["api_depedencies"])
+    print(context["api_dependencies"])
 
     output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".docx").name
     doc.save(output_path)
