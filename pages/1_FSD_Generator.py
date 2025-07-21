@@ -2,7 +2,43 @@ import streamlit as st
 from docxtpl import DocxTemplate
 import tempfile
 import datetime
-from docx2pdf import convert
+import os
+import subprocess # Added for LibreOffice conversion
+
+# Function to convert DOCX to PDF using LibreOffice
+def convert_docx_to_pdf_libreoffice(input_docx_path, output_dir):
+    # Ensure the output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Construct the command to run LibreOffice in headless mode
+    command = [
+        "libreoffice",
+        "--headless",
+        "--convert-to", "pdf",
+        input_docx_path,
+        "--outdir", output_dir
+    ]
+    
+    try:
+        # Execute the command
+        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        print(f"LibreOffice conversion stdout: {result.stdout}")
+        if result.stderr:
+            print(f"LibreOffice conversion stderr: {result.stderr}")
+
+        # The output PDF will be in output_dir with the same base name as the DOCX
+        pdf_filename = os.path.basename(input_docx_path).replace(".docx", ".pdf")
+        output_pdf_path = os.path.join(output_dir, pdf_filename)
+        
+        if not os.path.exists(output_pdf_path):
+            raise FileNotFoundError(f"LibreOffice did not produce the expected PDF at {output_pdf_path}")
+            
+        return output_pdf_path
+    except subprocess.CalledProcessError as e:
+        print(f"Error during LibreOffice conversion: {e.stderr}")
+        raise RuntimeError(f"PDF conversion failed: {e.stderr}")
+    except FileNotFoundError:
+        raise RuntimeError("LibreOffice command not found. Make sure LibreOffice is installed and in your PATH.")
 
 
 
@@ -129,13 +165,14 @@ if st.button("🚀 Generate FSD"):
     print(context["api_dependencies"])
 
     output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".docx").name
+    # output_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name # This will be returned by the function
     doc.save(output_path)
 
-    output_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
-    convert(output_path, output_pdf)
+    output_pdf = convert_docx_to_pdf_libreoffice(output_path, tempfile.gettempdir())
 
     with open(output_pdf, "rb") as f:
         st.success("✅ FSD berhasil dibuat!")
         st.download_button("⬇️ Download FSD", f, file_name="Generated_FSD.pdf")
 # else:
 #     st.info("📥 Silakan upload file template Word terlebih dahulu untuk mulai mengisi form.")
+
