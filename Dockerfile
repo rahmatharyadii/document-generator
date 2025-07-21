@@ -1,40 +1,27 @@
-FROM jtl-tkgiharbor.hq.bni.co.id/mnd-dev/python:3.9-slim
+# Use an official Python runtime as a parent image
+FROM python:3.9-slim
 
-ENV http_proxy=http://192.168.98.199:8080
-ENV https_proxy=http://192.168.98.199:8080
+# Install LibreOffice and other necessary packages for docx to pdf conversion
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libreoffice \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
 
-
-ENV DEBIAN_FRONTEND noninteractive
-
-RUN apt-get update \
-    && apt-get -y install apt-utils \
-    && apt-get -y install libaio-dev \
-    && apt-get -y install unzip \
-    && apt-get -y install git \
-    && apt-get -y install nano \
-    && apt-get -y install telnet \
-    && apt-get -y install curl \
-    && apt-get -y install htop \
-    && apt-get install tzdata -y \
-    && mkdir -p /logs
-
-
-RUN chmod -R 777 /logs/
-
-ENV TZ=Asia/Jakarta
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && dpkg-reconfigure -f noninteractive tzdata
-
-COPY . /app
-
-
-# INSTALL DEPENDENCY PYHTON
-COPY ./requirements.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-
-
+# Set the working directory in the container
 WORKDIR /app
 
-ENV http_proxy=
-ENV https_proxy=
+# Copy the dependencies file to the working directory
+COPY requirements.txt .
 
-CMD ["streamlit", "run", "main.py"]
+# Install any needed packages specified in requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application's code to the working directory
+COPY . .
+
+# Make port 8501 available to the world outside this container
+EXPOSE 8501
+
+# Run app.py when the container launches
+CMD ["streamlit", "run", "app.py"]
