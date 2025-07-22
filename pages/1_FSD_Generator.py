@@ -12,7 +12,8 @@ def convert_docx_to_pdf_libreoffice(input_docx_path, output_dir):
     
     # Construct the command to run LibreOffice in headless mode
     command = [
-        "libreoffice",
+        "libreoffice", # untuk versi Linux
+        # "soffice",  # untuk versi Windows
         "--headless",
         "--convert-to", "pdf",
         input_docx_path,

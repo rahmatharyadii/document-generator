@@ -7,6 +7,7 @@ from datetime import datetime, date as date_class
 import tempfile
 import os
 import subprocess  # Added for LibreOffice conversion
+from urllib.parse import urlparse
 
 
 # Function to convert DOCX to PDF using LibreOffice
@@ -16,7 +17,8 @@ def convert_docx_to_pdf_libreoffice(input_docx_path, output_dir):
 
     # Construct the command to run LibreOffice in headless mode
     command = [
-        "libreoffice",
+        "libreoffice", # untuk versi Linux
+        # "soffice",  # untuk versi Windows
         "--headless",
         "--convert-to", "pdf",
         input_docx_path,
@@ -69,9 +71,15 @@ if uploaded_file:
 
         st.subheader("📝 Judul Test Case per API")
         test_case_titles = []
+        test_case_logs = []
         for i, (method, url, _) in enumerate(api_blocks, start=1):
-            test_case_title = st.text_input(f"Test Case {i}: {method} {url}", key=f"test_case_title_{i}")
+            parsed_url = urlparse(url)
+            endpoint_only = parsed_url.path
+            st.markdown(f"#### Test Case {i}: {method} {endpoint_only}")
+            test_case_title = st.text_input("Judul Test Case", key=f"test_case_title_{i}")
+            test_case_log = st.text_area("Log Pengujian (manual)", key=f"test_case_log_{i}")
             test_case_titles.append(test_case_title)
+            test_case_logs.append(test_case_log)
 
         submitted = st.form_submit_button("Generate Dokumen")
 
@@ -87,28 +95,36 @@ if uploaded_file:
         test_case_data = []
 
         for i, (method, url, body_block) in enumerate(api_blocks, start=1):
+            headers_match = re.search(r'"Request Headers"\s*:\s*\{(.*?)\}', body_block, re.DOTALL)
             req_match = re.search(r'"Request Body"\s*:\s*"((?:[^"\\]|\\.)*)"', body_block)
+
+            curl_lines = [f'curl -X {method} "{url}"']
+
+            # Add headers if found
+            if headers_match:
+                headers_raw = headers_match.group(1)
+                try:
+                    headers_dict = json.loads("{" + headers_raw + "}")
+                    for key, value in headers_dict.items():
+                        curl_lines.append(f'  -H "{key}: {value}"')
+                except Exception as e:
+                    curl_lines.append(f'  # Failed to parse headers: {e}')
+
+            # Add body if found
             if req_match:
                 try:
                     req_str = req_match.group(1).encode().decode("unicode_escape")
                     req_json = json.loads(req_str)
-                    request_body = json.dumps(req_json, indent=2, ensure_ascii=False)
+                    request_body_str = json.dumps(req_json, ensure_ascii=False)
+                    curl_lines.append(f"  -d '{request_body_str}'")
                 except Exception as e:
-                    request_body = f"[decode failed: {e}]"
+                    curl_lines.append(f'  # Failed to parse body: {e}')
+
+            # If only 1 line (curl) = no headers/body found
+            if len(curl_lines) == 1:
+                request_body = "[no Request Body or Headers found]"
             else:
-                headers_match = re.search(r'"Request Headers"\s*:\s*\{(.*?)\}', body_block, re.DOTALL)
-                if headers_match:
-                    headers_raw = headers_match.group(1)
-                    try:
-                        headers_dict = json.loads("{" + headers_raw + "}")
-                        curl_lines = [f'curl -X {method} "{url}"']
-                        for key, value in headers_dict.items():
-                            curl_lines.append(f'  -H "{key}: {value}"')
-                        request_body = "\n".join(curl_lines)
-                    except Exception as e:
-                        request_body = f"[headers to curl failed: {e}]"
-                else:
-                    request_body = "[no Request Body or Headers found]"
+                request_body = "\n".join(curl_lines)
 
             res_match = re.search(r'"Response Body"\s*:\s*"((?:[^"\\]|\\.)*)"', body_block)
             if res_match:
@@ -133,7 +149,8 @@ if uploaded_file:
                 "test_case": test_case_titles[i - 1] if i - 1 < len(test_case_titles) else f"{method} {url}",
                 "request_body": request_body,
                 "response_body": response_body,
-                "log": f"Status: {status}, Code: {status_code}, Message: {message}"
+                "log": test_case_logs[i - 1] if i - 1 < len(
+                    test_case_logs) else f"Status: {status}, Code: {status_code}, Message: {message}"
             })
 
         # --- Buat dokumen sementara ---
