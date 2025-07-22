@@ -6,13 +6,14 @@ from docx.shared import Inches
 from datetime import datetime, date as date_class
 import tempfile
 import os
-import subprocess # Added for LibreOffice conversion
+import subprocess  # Added for LibreOffice conversion
+
 
 # Function to convert DOCX to PDF using LibreOffice
 def convert_docx_to_pdf_libreoffice(input_docx_path, output_dir):
     # Ensure the output directory exists
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # Construct the command to run LibreOffice in headless mode
     command = [
         "libreoffice",
@@ -21,7 +22,7 @@ def convert_docx_to_pdf_libreoffice(input_docx_path, output_dir):
         input_docx_path,
         "--outdir", output_dir
     ]
-    
+
     try:
         # Execute the command
         result = subprocess.run(command, check=True, capture_output=True, text=True)
@@ -32,10 +33,10 @@ def convert_docx_to_pdf_libreoffice(input_docx_path, output_dir):
         # The output PDF will be in output_dir with the same base name as the DOCX
         pdf_filename = os.path.basename(input_docx_path).replace(".docx", ".pdf")
         output_pdf_path = os.path.join(output_dir, pdf_filename)
-        
+
         if not os.path.exists(output_pdf_path):
             raise FileNotFoundError(f"LibreOffice did not produce the expected PDF at {output_pdf_path}")
-            
+
         return output_pdf_path
     except subprocess.CalledProcessError as e:
         print(f"Error during LibreOffice conversion: {e.stderr}")
@@ -43,13 +44,20 @@ def convert_docx_to_pdf_libreoffice(input_docx_path, output_dir):
     except FileNotFoundError:
         raise RuntimeError("LibreOffice command not found. Make sure LibreOffice is installed and in your PATH.")
 
-st.title("🧪 Test Automation Document Generator")
+
+st.title("🧪 Unit Test Document Generator")
 
 # --- Upload file JSON ---
 uploaded_file = st.file_uploader("Upload hasil console log Postman (result_json.txt)", type=["txt"])
 
 if uploaded_file:
     raw = uploaded_file.read().decode("utf-8", errors="replace")  # handle karakter tidak valid
+
+    # --- Temukan blok API ---
+    api_blocks = re.findall(
+        r"(GET|POST|PUT|DELETE)\s+(http[^\s]+):\s+\{(.*?\"Response Body\"\s*:\s*\"(?:[^\"\\]|\\.)*\")\s*\}",
+        raw, re.DOTALL
+    )
 
     with st.form("form_info"):
         st.subheader("🔧 Informasi Umum")
@@ -58,6 +66,13 @@ if uploaded_file:
         date_input = st.date_input("Date", value=date_class.today())
         description = st.text_area("Deskripsi")  # Pengujian API terhadap endpoint seriRedeemId
         image_file = st.file_uploader("Upload gambar Sequence Diagram", type=["png", "jpg", "jpeg"])
+
+        st.subheader("📝 Judul Test Case per API")
+        test_case_titles = []
+        for i, (method, url, _) in enumerate(api_blocks, start=1):
+            test_case_title = st.text_input(f"Test Case {i}: {method} {url}", key=f"test_case_title_{i}")
+            test_case_titles.append(test_case_title)
+
         submitted = st.form_submit_button("Generate Dokumen")
 
     if submitted:
@@ -68,12 +83,6 @@ if uploaded_file:
             9: "September", 10: "Oktober", 11: "November", 12: "Desember"
         }
         tanggal_indo = f"{date_input.day} {bulan_indo[date_input.month]} {date_input.year}"
-
-        # --- Temukan blok API ---
-        api_blocks = re.findall(
-            r"(GET|POST|PUT|DELETE)\s+(http[^\s]+):\s+\{(.*?\"Response Body\"\s*:\s*\"(?:[^\"\\]|\\.)*\")\s*\}",
-            raw, re.DOTALL
-        )
 
         test_case_data = []
 
@@ -118,16 +127,10 @@ if uploaded_file:
             status_code = res_json.get("statusCode", res_json.get("code", "N/A"))
             message = res_json.get("message", "No message")
 
-            custom_test_cases = [
-                "Sukses Get Data",
-                "Client ID kosong",
-                "Data tidak ditemukan"
-            ]
-
             test_case_data.append({
                 "loop_index": f"{i:02d}",
                 "test_condition": "Normal" if str(status_code) in ["200", "00"] else "Abnormal",
-                "test_case": custom_test_cases[i - 1] if i - 1 < len(custom_test_cases) else f"{method} {url}",
+                "test_case": test_case_titles[i - 1] if i - 1 < len(test_case_titles) else f"{method} {url}",
                 "request_body": request_body,
                 "response_body": response_body,
                 "log": f"Status: {status}, Code: {status_code}, Message: {message}"
@@ -161,12 +164,13 @@ if uploaded_file:
             try:
                 doc.render(context)
                 doc.save(docx_path)
-                
+
                 # Use the new LibreOffice conversion function
                 pdf_path = convert_docx_to_pdf_libreoffice(docx_path, tmpdir)
 
                 with open(pdf_path, "rb") as pdf_file:
                     st.success("✅ Dokumen berhasil dibuat!")
-                    st.download_button("📄 Download PDF", data=pdf_file, file_name="API_Test_Report.pdf", mime="application/pdf")
+                    st.download_button("📄 Download PDF", data=pdf_file, file_name="API_Test_Report.pdf",
+                                       mime="application/pdf")
             except Exception as e:
                 st.error(f"❌ Gagal membuat dokumen: {e}")
