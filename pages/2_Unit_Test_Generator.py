@@ -17,8 +17,8 @@ def convert_docx_to_pdf_libreoffice(input_docx_path, output_dir):
 
     # Construct the command to run LibreOffice in headless mode
     command = [
-        "libreoffice", # untuk versi Linux
-        # "soffice",  # untuk versi Windows
+        # "libreoffice", # untuk versi Linux
+        "soffice",  # untuk versi Windows
         "--headless",
         "--convert-to", "pdf",
         input_docx_path,
@@ -80,6 +80,17 @@ if uploaded_file:
             test_case_log = st.text_area("Log Pengujian (manual)", key=f"test_case_log_{i}")
             test_case_titles.append(test_case_title)
             test_case_logs.append(test_case_log)
+
+        st.subheader("📝 Delivery Approval")
+        st.markdown("#### Developer")
+        dev_name = st.text_input("Nama Developer")
+        dev_npp = st.text_input("NPP Developer")
+        st.markdown("#### Manager")
+        mgr_name = st.text_input("Nama Manager")
+        mgr_npp = st.text_input("NPP Manager")
+        st.markdown("#### Dept Head")
+        dept_head_name = st.text_input("Nama Dept Head")
+        dept_head_npp = st.text_input("NPP Dept Head")
 
         submitted = st.form_submit_button("Generate Dokumen")
 
@@ -175,19 +186,26 @@ if uploaded_file:
                 "date": tanggal_indo,
                 "description": description,
                 "test_cases": test_case_data,
-                "sequence_diagram": sequence_diagram
+                "sequence_diagram": sequence_diagram,
+                "dev_name": dev_name,
+                "dev_npp": dev_npp,
+                "mgr_name": mgr_name,
+                "mgr_npp": mgr_npp,
+                "dept_head_name": dept_head_name,
+                "dept_head_npp": dept_head_npp
             }
 
             try:
-                doc.render(context)
-                doc.save(docx_path)
+                with st.spinner("📄 Membuat dokumen dan mengonversi ke PDF..."):
+                    doc.render(context)
+                    doc.save(docx_path)
 
-                # Use the new LibreOffice conversion function
-                pdf_path = convert_docx_to_pdf_libreoffice(docx_path, tmpdir)
+                    # Use the new LibreOffice conversion function
+                    pdf_path = convert_docx_to_pdf_libreoffice(docx_path, tmpdir)
 
-                with open(pdf_path, "rb") as pdf_file:
-                    st.success("✅ Dokumen berhasil dibuat!")
-                    st.download_button("📄 Download PDF", data=pdf_file, file_name="API_Test_Report.pdf",
-                                       mime="application/pdf")
+                    with open(pdf_path, "rb") as pdf_file:
+                        st.success("✅ Dokumen berhasil dibuat!")
+                        st.download_button("📄 Download PDF", data=pdf_file, file_name="API_Test_Report.pdf",
+                                           mime="application/pdf")
             except Exception as e:
                 st.error(f"❌ Gagal membuat dokumen: {e}")
