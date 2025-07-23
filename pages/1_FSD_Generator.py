@@ -122,13 +122,13 @@ for idx, spec in enumerate(st.session_state.api_specs):
 st.subheader("4. Dependencies per API")
 if st.button("➕ Tambah API Dependencies"):
     st.session_state.api_dependencies.append({
-        "service_name_depedencies": "",
+        "service_name_dependencies": "",
         "dependencies": []
     })
 
 for idx, dep in enumerate(st.session_state.api_dependencies):
     with st.expander(f"Dependencies for API #{idx + 1}", expanded=True):
-        st.session_state.api_dependencies[idx]["service_name_depedencies"] = st.text_input(f"Service Name (Dep) #{idx+1}", value=dep["service_name_depedencies"], key=f"dep_name_{idx}")
+        st.session_state.api_dependencies[idx]["service_name_dependencies"] = st.text_input(f"Service Name (Dep) #{idx+1}", value=dep["service_name_dependencies"], key=f"dep_name_{idx}")
         raw = st.text_area(f"Dependencies List (pisahkan dengan | pipe) #{idx+1}", value="|".join(dep["dependencies"]), key=f"dep_list_{idx}")
         parts = [d.strip() for d in raw.split("|") if d.strip()]
         st.session_state.api_dependencies[idx]["dependencies"] = parts
