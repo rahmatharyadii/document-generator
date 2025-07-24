@@ -57,6 +57,40 @@ group = st.text_input("Group")
 project_name = st.text_input("Project Name")
 date = st.date_input("Date", value=datetime.date.today())
 
+# Initialize PIC dan service di session state
+if "pic_list" not in st.session_state:
+    st.session_state.pic_list = []  # List berisi dict: {"pic_name": "", "services": []}
+
+
+# Tombol tambah PIC
+if st.button("➕ Tambah PIC"):
+    st.session_state.pic_list.append({
+        "pic_name": "",
+        "services": []
+    })
+
+# Loop tiap PIC
+for i, pic in enumerate(st.session_state.pic_list):
+    with st.expander(f"PIC #{i+1}", expanded=True):
+        pic_name = st.text_input(f"Nama PIC #{i+1}", value=pic["pic_name"], key=f"pic_name_{i}")
+        st.session_state.pic_list[i]["pic_name"] = pic_name
+
+        # Tombol tambah service description untuk PIC ini
+        if st.button(f"➕ Tambah Service Description PIC #{i+1}", key=f"add_service_{i}"):
+            st.session_state.pic_list[i]["services"].append("")
+
+        # Input untuk tiap deskripsi service
+        for j, service in enumerate(pic["services"]):
+            service_desc = st.text_input(f"Service Description #{j+1} PIC #{i+1}", value=service, key=f"service_{i}_{j}")
+            st.session_state.pic_list[i]["services"][j] = service_desc
+
+        # Tombol hapus PIC
+        if st.button(f"🗑️ Hapus PIC #{i+1}", key=f"del_pic_{i}"):
+            st.session_state.pic_list.pop(i)
+            st.experimental_rerun()
+
+
+
 st.subheader("1. Introduction")
 purpose = st.text_input("Purpose")
 scope = st.text_input("Scope")
@@ -160,10 +194,22 @@ if st.button("🚀 Generate TSD"):
             "pictures": pictures
         })
 
+    pic_context = []  # pastikan ini ada!
+
+    for pic in st.session_state.pic_list:
+        # Jika PIC tidak ada nama atau services kosong, skip
+        if not pic["pic_name"] or not pic["services"]:
+            continue
+        pic_context.append({
+            "pic_name": pic["pic_name"],
+            "services": pic["services"]
+        })
+
     context = {
         "group": group,
         "project_name": project_name,
         "date": str(date),
+        "pic_list": pic_context,
         "purpose": purpose,
         "scope": scope,
         "impact_analysis": impact_analysis,
