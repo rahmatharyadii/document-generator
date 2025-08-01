@@ -52,7 +52,7 @@ def format_src_lines_sorted_grouped(src_text):
 st.set_page_config(page_title="Delivery Form Generator", layout="centered")
 st.title("📄 Delivery Form Generator")
 
-TEMPLATE_PATH = "Delivery-Form.docx"
+TEMPLATE_PATH = "../../../../../Downloads/Delivery-Form.docx"
 
 # Informasi proyek
 st.subheader("📌 Informasi Proyek")
@@ -61,7 +61,26 @@ service_name = st.text_input("Service")
 no_cr = st.text_input("No. IR/CR")
 sub_system = st.text_input("SubSystem")
 ref = st.text_input("Reference Trace IR/CR")
-impl_date = st.date_input("Date to be Implemented", value=date.today())
+# impl_date = st.date_input("Date to be Implemented", value=date.today())
+# Inisialisasi session state
+if "impl_date" not in st.session_state:
+    st.session_state.impl_date = None
+if "show_date_picker" not in st.session_state:
+    st.session_state.show_date_picker = False
+
+# Tombol untuk memicu tampilkan date picker
+if not st.session_state.show_date_picker:
+    if st.button("📅 Pilih Tanggal Implementasi"):
+        st.session_state.show_date_picker = True
+        st.rerun()
+else:
+    # Tampilkan date picker
+    impl_date_input = st.date_input(
+        "Date to be Implemented", 
+        value=st.session_state.impl_date or date.today(), 
+        format="YYYY-MM-DD"
+    )
+    st.session_state.impl_date = impl_date_input
 description = st.text_area("Short Description", height=100)
 
 # Source
@@ -75,6 +94,29 @@ formatted_src = format_src_lines_sorted_grouped(src)
 # Sequence Diagram
 st.subheader("📈 Sequence Diagram")
 sequence_diagram = st.file_uploader("Upload Sequence Diagram (jpg/png)", type=["jpg", "jpeg", "png"])
+
+# Notes
+st.subheader("📈 Notes / Special Instruction")
+if "dev_notes" not in st.session_state:
+    st.session_state.dev_notes = []
+
+# Tombol tambah & hapus terakhir
+col1, col2 = st.columns([1, 1])
+with col1:
+    if st.button("➕ Note"):
+        st.session_state.dev_notes.append({"text": ""})
+        st.rerun()
+    
+for idx, devnote in enumerate(st.session_state.dev_notes):
+    with st.expander(f"Note {idx + 1}", expanded=False):
+        col_text, col_delete = st.columns([6, 1])
+        with col_text:
+            devnote_text = st.text_area(f"Deskripsi Note {idx + 1}", key=f"devnote_text_{idx}", value=devnote["text"])
+            st.session_state.dev_notes[idx]["text"] = devnote_text
+        with col_delete:
+            if st.button("🗑️", key=f"delete_devnote_{idx}"):
+                st.session_state.dev_notes.pop(idx)
+                st.rerun()
 
 # Langkah Setup Deployment
 st.subheader("🚀 Setup Deployment App - Langkah per Langkah")
@@ -146,7 +188,6 @@ with col1:
         st.session_state.sql_notes.append({"text": ""})
         st.rerun()
 
-# Tampilkan langkah-langkah rollback
 for idx, note in enumerate(st.session_state.sql_notes):
     with st.expander(f"Note {idx + 1}", expanded=False):
         col_text, col_delete = st.columns([6, 1])
@@ -160,15 +201,15 @@ for idx, note in enumerate(st.session_state.sql_notes):
 
 # Approval
 st.subheader("📝 Delivery Approval")
-st.markdown("#### Developer")
-dev_name = st.text_input("Nama Developer")
-dev_npp = st.text_input("NPP Developer")
-st.markdown("#### Manager")
-mgr_name = st.text_input("Nama Manager")
-mgr_npp = st.text_input("NPP Manager")
-st.markdown("#### Dept Head")
-dept_head_name = st.text_input("Nama Dept Head")
-dept_head_npp = st.text_input("NPP Dept Head")
+with st.expander("IT Developer", expanded=False):
+    dev_name = st.text_input("Name Developer")
+    dev_npp = st.text_input("NPP Developer")
+with st.expander("IT Developer (MGR)", expanded=False):
+    mgr_name = st.text_input("Name Manager")
+    mgr_npp = st.text_input("NPP Manager")
+with st.expander("Dept Head", expanded=False):
+    dept_head_name = st.text_input("Name Dept Head")
+    dept_head_npp = st.text_input("NPP Dept Head")
 
 # Tombol Generate
 if st.button("📄 Generate Dokumen"):
@@ -200,6 +241,10 @@ if st.button("📄 Generate Dokumen"):
         note_rendered = []
         for rb in st.session_state.sql_notes:
             note_rendered.append({"text": note["text"]})
+        
+        devnote_rendered = []
+        for rb in st.session_state.dev_notes:
+            devnote_rendered.append({"text": devnote["text"]})
 
         # Sequence diagram
         seq_img = None
@@ -215,7 +260,8 @@ if st.button("📄 Generate Dokumen"):
             "no_cr": no_cr,
             "sub_system": sub_system,
             "ref": ref,
-            "date": str(impl_date),
+            # "date": str(impl_date),
+            "date": str(st.session_state.impl_date) if st.session_state.impl_date else "",
             "description": description,
             "src": formatted_src,
             "documentation": documentation,
@@ -227,6 +273,7 @@ if st.button("📄 Generate Dokumen"):
             "sql_script_name": sql_script_name,
             "sql_script": sql_script,
             "sql_notes": note_rendered,
+            "dev_notes": devnote_rendered,
             "dev_name": dev_name,
             "dev_npp": dev_npp,
             "mgr_name": mgr_name,
@@ -242,6 +289,6 @@ if st.button("📄 Generate Dokumen"):
                 pdf_path = convert_docx_to_pdf_libreoffice(output_docx, tmpdir)
                 with open(pdf_path, "rb") as pdf_file:
                     st.success("✅ Dokumen berhasil dibuat!")
-                    st.download_button("📄 Download PDF", data=pdf_file, file_name="Delivery-Form.pdf", mime="application/pdf")
+                    st.download_button("📥 Download PDF", data=pdf_file, file_name="Delivery-Form.pdf", mime="application/pdf")
         except Exception as e:
             st.error(f"❌ Gagal membuat dokumen: {e}")

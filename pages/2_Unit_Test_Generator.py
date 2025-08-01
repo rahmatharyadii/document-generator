@@ -6,25 +6,24 @@ from docx.shared import Inches
 from datetime import datetime, date as date_class
 import tempfile
 import os
-import subprocess  # Added for LibreOffice conversion
+import subprocess # Added for LibreOffice conversion
 from urllib.parse import urlparse
-
 
 # Function to convert DOCX to PDF using LibreOffice
 def convert_docx_to_pdf_libreoffice(input_docx_path, output_dir):
     # Ensure the output directory exists
     os.makedirs(output_dir, exist_ok=True)
-
+    
     # Construct the command to run LibreOffice in headless mode
     command = [
         "libreoffice", # untuk versi Linux
-        # "soffice",  # untuk versi Windows
+        # "soffice", # untuk versi Windows
         "--headless",
         "--convert-to", "pdf",
         input_docx_path,
         "--outdir", output_dir
     ]
-
+    
     try:
         # Execute the command
         result = subprocess.run(command, check=True, capture_output=True, text=True)
@@ -35,17 +34,16 @@ def convert_docx_to_pdf_libreoffice(input_docx_path, output_dir):
         # The output PDF will be in output_dir with the same base name as the DOCX
         pdf_filename = os.path.basename(input_docx_path).replace(".docx", ".pdf")
         output_pdf_path = os.path.join(output_dir, pdf_filename)
-
+        
         if not os.path.exists(output_pdf_path):
             raise FileNotFoundError(f"LibreOffice did not produce the expected PDF at {output_pdf_path}")
-
+            
         return output_pdf_path
     except subprocess.CalledProcessError as e:
         print(f"Error during LibreOffice conversion: {e.stderr}")
         raise RuntimeError(f"PDF conversion failed: {e.stderr}")
     except FileNotFoundError:
         raise RuntimeError("LibreOffice command not found. Make sure LibreOffice is installed and in your PATH.")
-
 
 st.title("🧪 Unit Test Document Generator")
 
@@ -82,15 +80,15 @@ if uploaded_file:
             test_case_logs.append(test_case_log)
 
         st.subheader("📝 Delivery Approval")
-        st.markdown("#### Developer")
-        dev_name = st.text_input("Nama Developer")
-        dev_npp = st.text_input("NPP Developer")
-        st.markdown("#### Manager")
-        mgr_name = st.text_input("Nama Manager")
-        mgr_npp = st.text_input("NPP Manager")
-        st.markdown("#### Dept Head")
-        dept_head_name = st.text_input("Nama Dept Head")
-        dept_head_npp = st.text_input("NPP Dept Head")
+        with st.expander("IT Developer", expanded=False):
+            dev_name = st.text_input("Name Developer")
+            dev_npp = st.text_input("NPP Developer")
+        with st.expander("IT Developer (MGR)", expanded=False):
+            mgr_name = st.text_input("Name Manager")
+            mgr_npp = st.text_input("NPP Manager")
+        with st.expander("Dept Head", expanded=False):
+            dept_head_name = st.text_input("Name Dept Head")
+            dept_head_npp = st.text_input("NPP Dept Head")
 
         submitted = st.form_submit_button("Generate Dokumen")
 
@@ -109,7 +107,7 @@ if uploaded_file:
             headers_match = re.search(r'"Request Headers"\s*:\s*\{(.*?)\}', body_block, re.DOTALL)
             req_match = re.search(r'"Request Body"\s*:\s*"((?:[^"\\]|\\.)*)"', body_block)
 
-            curl_lines = [f'curl -X {method} "{url}"']
+            curl_lines = [f"curl -X {method} '{url}'"]
 
             # Add headers if found
             if headers_match:
@@ -117,7 +115,7 @@ if uploaded_file:
                 try:
                     headers_dict = json.loads("{" + headers_raw + "}")
                     for key, value in headers_dict.items():
-                        curl_lines.append(f'  -H "{key}: {value}"')
+                        curl_lines.append(f"  -H '{key}: {value}'")
                 except Exception as e:
                     curl_lines.append(f'  # Failed to parse headers: {e}')
 
@@ -160,15 +158,14 @@ if uploaded_file:
                 "test_case": test_case_titles[i - 1] if i - 1 < len(test_case_titles) else f"{method} {url}",
                 "request_body": request_body,
                 "response_body": response_body,
-                "log": test_case_logs[i - 1] if i - 1 < len(
-                    test_case_logs) else f"Status: {status}, Code: {status_code}, Message: {message}"
+                "log": test_case_logs[i - 1] if i - 1 < len(test_case_logs) else f"Status: {status}, Code: {status_code}, Message: {message}"
             })
 
         # --- Buat dokumen sementara ---
         with tempfile.TemporaryDirectory() as tmpdir:
-            docx_path = os.path.join(tmpdir, "API_Test_Report.docx")
+            docx_path = os.path.join(tmpdir, "Unit-Test.docx")
             # pdf_path = os.path.join(tmpdir, "API_Test_Report.pdf") # This will be returned by the function
-            template_path = "Test-Automation.docx"  # pastikan file ini ada
+            template_path = "../../../../../Downloads/Test-Automation.docx"  # pastikan file ini ada
 
             doc = DocxTemplate(template_path)
 
@@ -199,13 +196,12 @@ if uploaded_file:
                 with st.spinner("📄 Membuat dokumen dan mengonversi ke PDF..."):
                     doc.render(context)
                     doc.save(docx_path)
-
+                    
                     # Use the new LibreOffice conversion function
                     pdf_path = convert_docx_to_pdf_libreoffice(docx_path, tmpdir)
 
                     with open(pdf_path, "rb") as pdf_file:
                         st.success("✅ Dokumen berhasil dibuat!")
-                        st.download_button("📄 Download PDF", data=pdf_file, file_name="API_Test_Report.pdf",
-                                           mime="application/pdf")
+                        st.download_button("📥 Download PDF", data=pdf_file, file_name="Unit-Test.pdf", mime="application/pdf")
             except Exception as e:
                 st.error(f"❌ Gagal membuat dokumen: {e}")
