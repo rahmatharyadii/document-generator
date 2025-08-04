@@ -6,54 +6,38 @@ from docx.shared import Inches
 from datetime import datetime, date as date_class
 import tempfile
 import os
-import subprocess # Added for LibreOffice conversion
+import subprocess
 from urllib.parse import urlparse
 
-# Function to convert DOCX to PDF using LibreOffice
+# --- Konversi DOCX ke PDF ---
 def convert_docx_to_pdf_libreoffice(input_docx_path, output_dir):
-    # Ensure the output directory exists
     os.makedirs(output_dir, exist_ok=True)
-    
-    # Construct the command to run LibreOffice in headless mode
     command = [
         "libreoffice", # untuk versi Linux
-        # "soffice", # untuk versi Windows
+        # "soffice",  # untuk versi Windows
         "--headless",
         "--convert-to", "pdf",
         input_docx_path,
         "--outdir", output_dir
     ]
-    
     try:
-        # Execute the command
         result = subprocess.run(command, check=True, capture_output=True, text=True)
-        print(f"LibreOffice conversion stdout: {result.stdout}")
-        if result.stderr:
-            print(f"LibreOffice conversion stderr: {result.stderr}")
-
-        # The output PDF will be in output_dir with the same base name as the DOCX
         pdf_filename = os.path.basename(input_docx_path).replace(".docx", ".pdf")
         output_pdf_path = os.path.join(output_dir, pdf_filename)
-        
         if not os.path.exists(output_pdf_path):
-            raise FileNotFoundError(f"LibreOffice did not produce the expected PDF at {output_pdf_path}")
-            
+            raise FileNotFoundError(f"PDF tidak ditemukan: {output_pdf_path}")
         return output_pdf_path
-    except subprocess.CalledProcessError as e:
-        print(f"Error during LibreOffice conversion: {e.stderr}")
-        raise RuntimeError(f"PDF conversion failed: {e.stderr}")
-    except FileNotFoundError:
-        raise RuntimeError("LibreOffice command not found. Make sure LibreOffice is installed and in your PATH.")
+    except Exception as e:
+        raise RuntimeError(f"Gagal konversi PDF: {e}")
 
+# --- Judul Aplikasi ---
 st.title("🧪 Unit Test Document Generator")
 
-# --- Upload file JSON ---
-uploaded_file = st.file_uploader("Upload hasil console log Postman (result_json.txt)", type=["txt"])
+# --- Upload File JSON ---
+uploaded_file = st.file_uploader("📤 Upload hasil console log Postman (result_json.txt)", type=["txt"])
 
 if uploaded_file:
-    raw = uploaded_file.read().decode("utf-8", errors="replace")  # handle karakter tidak valid
-
-    # --- Temukan blok API ---
+    raw = uploaded_file.read().decode("utf-8", errors="replace")
     api_blocks = re.findall(
         r"(GET|POST|PUT|DELETE)\s+(http[^\s]+):\s+\{(.*?\"Response Body\"\s*:\s*\"(?:[^\"\\]|\\.)*\")\s*\}",
         raw, re.DOTALL
@@ -61,46 +45,49 @@ if uploaded_file:
 
     with st.form("form_info"):
         st.subheader("🔧 Informasi Umum")
-        group = st.text_input("Group")  # Monitoring & Notification Services Delivery
-        title = st.text_input("Judul Pengujian")  # Seri Redeem API Test
-        date_input = st.date_input("Date", value=date_class.today())
-        description = st.text_area("Deskripsi")  # Pengujian API terhadap endpoint seriRedeemId
-        image_file = st.file_uploader("Upload gambar Sequence Diagram", type=["png", "jpg", "jpeg"])
+        group = st.text_input("Nama Group", placeholder="Contoh: Monitoring & Notification Services Delivery")
+        title = st.text_input("Judul Pengujian", placeholder="Contoh: Seri Redeem API Test")
+        date_input = st.date_input("Tanggal Pengujian", value=date_class.today())
+        description = st.text_area("Deskripsi Pengujian", height=100, placeholder="Contoh: Pengujian API endpoint seriRedeemId")
+        image_file = st.file_uploader("📸 Upload Gambar Sequence Diagram", type=["png", "jpg", "jpeg"])
 
-        st.subheader("📝 Judul Test Case per API")
+        st.subheader("📋 Test Case per API")
         test_case_titles = []
         test_case_logs = []
+
         for i, (method, url, _) in enumerate(api_blocks, start=1):
             parsed_url = urlparse(url)
             endpoint_only = parsed_url.path
-            st.markdown(f"#### Test Case {i}: {method} {endpoint_only}")
-            test_case_title = st.text_input("Judul Test Case", key=f"test_case_title_{i}")
-            test_case_log = st.text_area("Log Pengujian (manual)", key=f"test_case_log_{i}")
-            test_case_titles.append(test_case_title)
-            test_case_logs.append(test_case_log)
+            with st.expander(f"Test Case {i}: `{method} {endpoint_only}`", expanded=False):
+                test_case_titles.append(st.text_input("Judul Test Case", key=f"tc_title_{i}"))
+                test_case_logs.append(st.text_area("Log Pengujian", key=f"tc_log_{i}", height=100))
 
-        st.subheader("📝 Delivery Approval")
-        with st.expander("IT Developer", expanded=False):
-            dev_name = st.text_input("Name Developer")
-            dev_npp = st.text_input("NPP Developer")
-        with st.expander("IT Developer (MGR)", expanded=False):
-            mgr_name = st.text_input("Name Manager")
-            mgr_npp = st.text_input("NPP Manager")
-        with st.expander("Dept Head", expanded=False):
-            dept_head_name = st.text_input("Name Dept Head")
-            dept_head_npp = st.text_input("NPP Dept Head")
+        st.subheader("✔️ Delivery Approval")
 
-        submitted = st.form_submit_button("Generate Dokumen")
+        with st.expander("👨‍💻 IT Developer"):
+            col1, col2 = st.columns(2)
+            dev_name = col1.text_input("Nama Developer")
+            dev_npp = col2.text_input("NPP Developer")
+
+        with st.expander("👨‍💼 IT Manager (MGR)"):
+            col1, col2 = st.columns(2)
+            mgr_name = col1.text_input("Nama Manager")
+            mgr_npp = col2.text_input("NPP Manager")
+
+        with st.expander("👨‍🏫 Dept Head"):
+            col1, col2 = st.columns(2)
+            dept_head_name = col1.text_input("Nama Dept Head")
+            dept_head_npp = col2.text_input("NPP Dept Head")
+
+        submitted = st.form_submit_button("📄 Generate Dokumen")
 
     if submitted:
-        # --- Format tanggal ---
         bulan_indo = {
             1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
             5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
             9: "September", 10: "Oktober", 11: "November", 12: "Desember"
         }
         tanggal_indo = f"{date_input.day} {bulan_indo[date_input.month]} {date_input.year}"
-
         test_case_data = []
 
         for i, (method, url, body_block) in enumerate(api_blocks, start=1):
@@ -108,32 +95,23 @@ if uploaded_file:
             req_match = re.search(r'"Request Body"\s*:\s*"((?:[^"\\]|\\.)*)"', body_block)
 
             curl_lines = [f"curl -X {method} '{url}'"]
-
-            # Add headers if found
             if headers_match:
-                headers_raw = headers_match.group(1)
                 try:
-                    headers_dict = json.loads("{" + headers_raw + "}")
-                    for key, value in headers_dict.items():
-                        curl_lines.append(f"  -H '{key}: {value}'")
+                    headers_dict = json.loads("{" + headers_match.group(1) + "}")
+                    for k, v in headers_dict.items():
+                        curl_lines.append(f"  -H '{k}: {v}'")
                 except Exception as e:
-                    curl_lines.append(f'  # Failed to parse headers: {e}')
+                    curl_lines.append(f"  # Header error: {e}")
 
-            # Add body if found
             if req_match:
                 try:
                     req_str = req_match.group(1).encode().decode("unicode_escape")
                     req_json = json.loads(req_str)
-                    request_body_str = json.dumps(req_json, ensure_ascii=False)
-                    curl_lines.append(f"  -d '{request_body_str}'")
+                    curl_lines.append(f"  -d '{json.dumps(req_json, ensure_ascii=False)}'")
                 except Exception as e:
-                    curl_lines.append(f'  # Failed to parse body: {e}')
+                    curl_lines.append(f"  # Body error: {e}")
 
-            # If only 1 line (curl) = no headers/body found
-            if len(curl_lines) == 1:
-                request_body = "[no Request Body or Headers found]"
-            else:
-                request_body = "\n".join(curl_lines)
+            request_body = "\n".join(curl_lines) if len(curl_lines) > 1 else "[no Request Body or Headers found]"
 
             res_match = re.search(r'"Response Body"\s*:\s*"((?:[^"\\]|\\.)*)"', body_block)
             if res_match:
@@ -155,18 +133,15 @@ if uploaded_file:
             test_case_data.append({
                 "loop_index": f"{i:02d}",
                 "test_condition": "Normal" if str(status_code) in ["200", "00"] else "Abnormal",
-                "test_case": test_case_titles[i - 1] if i - 1 < len(test_case_titles) else f"{method} {url}",
+                "test_case": test_case_titles[i - 1],
                 "request_body": request_body,
                 "response_body": response_body,
-                "log": test_case_logs[i - 1] if i - 1 < len(test_case_logs) else f"Status: {status}, Code: {status_code}, Message: {message}"
+                "log": test_case_logs[i - 1] or f"Status: {status}, Code: {status_code}, Message: {message}"
             })
 
-        # --- Buat dokumen sementara ---
         with tempfile.TemporaryDirectory() as tmpdir:
             docx_path = os.path.join(tmpdir, "Unit-Test.docx")
-            # pdf_path = os.path.join(tmpdir, "API_Test_Report.pdf") # This will be returned by the function
-            template_path = "../../../../../Downloads/Test-Automation.docx"  # pastikan file ini ada
-
+            template_path = "Test-Automation.docx"
             doc = DocxTemplate(template_path)
 
             if image_file:
@@ -193,13 +168,10 @@ if uploaded_file:
             }
 
             try:
-                with st.spinner("📄 Membuat dokumen dan mengonversi ke PDF..."):
+                with st.spinner("📄 Membuat dokumen dan konversi ke PDF..."):
                     doc.render(context)
                     doc.save(docx_path)
-                    
-                    # Use the new LibreOffice conversion function
                     pdf_path = convert_docx_to_pdf_libreoffice(docx_path, tmpdir)
-
                     with open(pdf_path, "rb") as pdf_file:
                         st.success("✅ Dokumen berhasil dibuat!")
                         st.download_button("📥 Download PDF", data=pdf_file, file_name="Unit-Test.pdf", mime="application/pdf")
